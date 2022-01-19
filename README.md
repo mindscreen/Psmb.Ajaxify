@@ -34,6 +34,19 @@ If you want to reuse some EEL expression in your code base, don't put it into co
 5. You may override the `Psmb.Ajaxify:Loader` object in order to customize the loader.
 
 
+## Usage with Content-Nodes
+By default, the lazy-loaded content is discriminated by the `@process` key and is thus globally the same for every occurrence of an ajaxified block of content, as it would be the same for a specific node-type.
+You can override the `entryIdentifier` on the `Psmb.Ajaxify:Ajaxify` on an instance basis as you would for cache segments.
+All `entryIdentifier` parts are concatenated and hashed.
+```
+@process.ajaxify = Psmb.Ajaxify:Ajaxify {
+  entryIdentifier {
+    node = ${node}
+    segment = 'content-details'
+  }
+}
+```
+
 ## Usage in the Wild
 
 - https://pokayanie1917.ru/

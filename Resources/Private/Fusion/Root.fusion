@@ -1,8 +1,17 @@
 include: Override.fusion
 
-# TODO: Watch out, this is hardcoded to be used with Psmb.Ajaxify:Ajaxify
 prototype(Psmb.Ajaxify:RenderPath) {
 	@class = 'Psmb\\Ajaxify\\Fusion\\RenderPathImplementation'
+	# every path resolution is relative to the Ajaxify prototype, so if you
+	# overwrite it, make sure to adjust this property
+	prototypeName = 'Psmb.Ajaxify:Ajaxify'
+	entryIdentifier = Neos.Fusion:Join {
+		key = ${key}
+		@process.hash {
+			expression = ${String.sha1(value)}
+			@position = 'end'
+		}
+	}
 }
 
 prototype(Psmb.Ajaxify:Loader) < prototype(Neos.Fusion:Value) {
@@ -10,21 +19,37 @@ prototype(Psmb.Ajaxify:Loader) < prototype(Neos.Fusion:Value) {
 }
 
 # Use this object as a processor on any path
-prototype(Psmb.Ajaxify:Ajaxify) < prototype(Neos.Fusion:Tag) {
+prototype(Psmb.Ajaxify:Ajaxify) < prototype(Neos.Fusion:Component) {
 	# The processor is disabled in BE or when rendering the AJAX request
 	@if.disableProcessor = ${!request.arguments.ajaxPathKey && !documentNode.context.inBackend}
-	tagName = 'a'
-	attributes.data-ajaxify = ${true}
-	attributes.href = Neos.Neos:NodeUri {
-		node = ${documentNode}
-		additionalParams.ajaxPathKey = Psmb.Ajaxify:RenderPath
+
+	entryIdentifier = Neos.Fusion:DataStructure
+
+	renderer = Neos.Fusion:Tag {
+		tagName = 'a'
+		attributes.data-ajaxify = ${true}
+		attributes.href = Neos.Neos:NodeUri {
+			node = ${documentNode}
+			additionalParams {
+				# The argument "node" is already used by the uri builder
+				contentNode = ${node.contextPath}
+				ajaxPathKey = Psmb.Ajaxify:RenderPath {
+					entryIdentifier.@apply.props = ${props.entryIdentifier}
+					context = ${props.context}
+				}
+			}
+		}
+		content = Psmb.Ajaxify:Loader
 	}
-	content = Psmb.Ajaxify:Loader
 }
 
 prototype(Psmb.Ajaxify:Renderer) {
 	@class = 'Psmb\\Ajaxify\\Fusion\\RendererImplementation'
-	node = ${documentNode}
+	# The argument "node" is already used
+	# We receive a context-path and need to find the respective node
+	contentNode = ${String.split(request.arguments.contentNode || '', '@')[0]}
+	contentNode.@process.convertToNode = ${q(documentNode).find(value).get(0) || documentNode}
+	node = ${this.contentNode}
 	pathKey = ${request.arguments.ajaxPathKey}
 	@cache {
 		mode = 'uncached'
